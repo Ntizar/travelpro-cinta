@@ -41,7 +41,7 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
-body{
+body, body.nz{
   background:var(--hueso);
   color:var(--tinta);
   font-family:"Travelpro Inter",Inter,"Helvetica Neue",Arial,sans-serif;
@@ -135,7 +135,7 @@ body{
   transition:opacity .16s ease;white-space:nowrap;display:flex;align-items:stretch}
 #etiqueta.visible{opacity:1}
 #etiqueta .n{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--tinta);background:var(--hueso);
-  border:1px solid var(--filete);border-right:0;padding:7px 10px;max-width:330px;overflow:hidden;text-overflow:ellipsis}
+  border:1px solid var(--filete);border-right:0;padding:7px 10px;max-width:min(440px,44vw);overflow:hidden;text-overflow:ellipsis}
 #etiqueta .p{font-size:11.5px;font-weight:500;color:#fff;background:var(--marron);padding:7px 10px;letter-spacing:.04em}
 #etiqueta::after{content:"";position:absolute;left:50%;bottom:-9px;width:1px;height:9px;background:var(--marron);opacity:.8}
 
