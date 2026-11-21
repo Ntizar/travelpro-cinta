@@ -555,7 +555,7 @@ body, body.nz{
       tipo:'soft', color:0x2b3a56, acento:0x8fa6ff,
       porque:'La más estrecha de las blandas (36 cm): <em>pasillos, trenes y maleteros pequeños</em>. Expande sin desbordarse de precio.' },
     { id:'crew-classic', linea:'Crew Classic', nombre:'Crew Classic Expandable Cabin Rollaboard', precio:'199,99 €',
-      medidas:'58 × 37 × 24 cm', material:'Rollaboard 2 ruedas', uso:'El original',
+      medidas:'58 × 37 × 24 cm', material:'Blanda técnica', uso:'Rollaboard 2 ruedas · el original',
       tipo:'roller', color:0x3d342a, acento:0xe0b060,
       porque:'El formato original en versión 2026: dos ruedas y asa larga, <em>la silueta que inventó Bob Plath en 1987</em>.' },
     { id:'optima', linea:'Optima', nombre:'Optima Expandable Compact Cabin Spinner', precio:'259,99 €',
@@ -1057,11 +1057,11 @@ body, body.nz{
 
   function resaltar(m, on) {
     if (!m) return;
-    m.userData.escala = on ? 1.075 : 1;
+    m.userData.escala = on ? 1.09 : 1;
     m.traverse(function (o) {
       if (o.isMesh && o.material && o.material.emissive) {
         if (!o.userData.emBase) o.userData.emBase = o.material.emissiveIntensity;
-        o.material.emissiveIntensity = on ? 0.28 : o.userData.emBase;
+        o.material.emissiveIntensity = on ? 0.38 : o.userData.emBase;
       }
     });
   }
