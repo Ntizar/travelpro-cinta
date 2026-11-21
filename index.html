@@ -1,0 +1,1399 @@
+<!doctype html>
+<html lang="es" data-nz-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Travelpro · La cinta — coge tu maleta</title>
+<meta name="description" content="La cinta de equipajes de Travelpro: pasa el cursor por cada maleta, mírala de cerca y cógela. Precio, medidas y por qué es la mejor, sobre la cinta.">
+<meta name="theme-color" content="#0a0d12">
+
+<!-- Aurora v10.10.0 (PASO 0 resuelto del repo Ntizar/Aurora, 21-nov-2026).
+     Se enlazan tokens + layout + acciones: la capa 3D y el HUD son CSS propio a propósito
+     (pieza creativa: el sistema no cubre una escena WebGL). -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Ntizar/Aurora@v10.10.0/tokens.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Ntizar/Aurora@v10.10.0/packs/p1-layout.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Ntizar/Aurora@v10.10.0/packs/p3-typography.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Ntizar/Aurora@v10.10.0/packs/p4-actions.css">
+
+<style>
+/* ---------- Travelpro · lenguaje visual de la marca (inspeccionado en eu.travelpro.com, 21-nov-2026) ----------
+   Hueso #FDFCF6 · marrón #675144 · tinta #171717 · rojo #C8102E · beige #E4D3C4
+   Micro-rótulos 10-12px, mayúsculas, tracking 2px · radios 0 · Inter · pesos 400-500
+   La capa 3D es propia (el sistema no cubre WebGL); el resto imita la casa.            */
+:root{
+  --hueso:#FDFCF6;
+  --marron:#675144;
+  --marron-claro:#8A7263;
+  --tinta:#171717;
+  --negro:#000000;
+  --rojo:#C8102E;
+  --beige:#E4D3C4;
+  --beige-claro:#F1E8DF;
+  --filete:rgba(0,0,0,.12);
+  --filete-suave:rgba(0,0,0,.07);
+  --blanco:#FFFFFF;
+  --oro:#C8A15A;
+  --oro-claro:#F0DDB4;
+  --cab:88px;
+  --paso:clamp(16px,3vw,40px);
+  --rotulo:10.5px;
+  --track:2px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--hueso);
+  color:var(--tinta);
+  font-family:"Travelpro Inter",Inter,"Helvetica Neue",Arial,sans-serif;
+  font-size:14px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+.salto{position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
+.salto:focus{position:fixed;left:12px;top:12px;width:auto;height:auto;z-index:99;background:var(--negro);
+  color:#fff;padding:12px 18px;font-size:12px;letter-spacing:var(--track);text-transform:uppercase;text-decoration:none}
+
+/* ---------- Barra de anuncio + cabecera (como la tienda) ---------- */
+.barra-anuncio{height:30px;display:flex;align-items:center;justify-content:center;gap:26px;
+  background:var(--marron);color:#F3EAE0;font-size:10px;letter-spacing:var(--track);text-transform:uppercase;
+  white-space:nowrap;overflow:hidden}
+.barra-anuncio span{opacity:.92}
+.barra-anuncio .sep{opacity:.45}
+.cabecera{height:58px;display:flex;align-items:center;justify-content:space-between;gap:18px;
+  padding:0 var(--paso);background:var(--hueso);border-bottom:1px solid var(--filete);position:relative;z-index:20}
+.marca{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;min-width:0}
+.marca__logo{height:38px;width:auto;display:block;margin-right:6px}
+.marca__logo svg{height:38px;width:auto;display:block}
+.marca{margin-right:auto}
+.marca__pais{font-size:10px;letter-spacing:var(--track);text-transform:uppercase;color:var(--marron);
+  border-left:1px solid var(--filete);padding-left:12px;display:none}
+.nav{display:flex;align-items:center;gap:clamp(16px,2vw,30px);margin-right:clamp(28px,4.5vw,72px)}
+.nav a{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--tinta);text-decoration:none;
+  padding:6px 0;border-bottom:1px solid transparent;white-space:nowrap;transition:border-color .18s ease,color .18s ease}
+.nav a:hover{color:var(--marron);border-bottom-color:var(--marron)}
+.marcador{display:flex;align-items:center;gap:clamp(14px,2.4vw,34px)}
+.dato{display:flex;flex-direction:column;gap:3px;min-width:0}
+.dato__et{font-size:var(--rotulo);letter-spacing:var(--track);text-transform:uppercase;color:var(--marron);
+  display:flex;align-items:center;gap:6px;white-space:nowrap}
+.dato__va{font-size:16px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--tinta);letter-spacing:.02em}
+.dato__va--oro{color:var(--marron)}
+.pulso{width:5px;height:5px;background:var(--marron);border-radius:50%;flex:none}
+
+/* ---------- Escena ---------- */
+#escena{position:relative;height:calc(100dvh - var(--cab));min-height:520px;overflow:hidden;background:#0B0908}
+#lienzo{position:absolute;inset:0;display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+#lienzo.arrastrando{cursor:grabbing}
+#lienzo.sobre-maleta{cursor:pointer}
+.vineta{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(to bottom,rgba(11,9,8,.55),transparent 16%,transparent 82%,rgba(11,9,8,.75));}
+
+/* ---------- Pista ---------- */
+.pista{position:absolute;z-index:4;left:50%;bottom:18px;transform:translateX(-50%);
+  display:flex;align-items:center;gap:14px;padding:10px 18px;background:rgba(253,252,246,.94);
+  border:1px solid var(--filete);font-size:10px;letter-spacing:var(--track);text-transform:uppercase;
+  color:var(--marron);white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.pista b{color:var(--tinta);font-weight:500}
+.pista__tecla{padding:2px 7px;border:1px solid var(--filete);color:var(--tinta);font-size:9px;background:var(--beige-claro)}
+
+/* ---------- Ficha ---------- */
+#ficha{position:absolute;z-index:6;right:var(--paso);top:50%;transform:translateY(-50%) translateX(16px);
+  width:min(360px,calc(100vw - 2*var(--paso)));background:var(--blanco);border:1px solid var(--filete);
+  padding:26px 24px 22px;opacity:0;visibility:hidden;
+  transition:opacity .2s ease,transform .26s cubic-bezier(.2,.8,.2,1);max-height:calc(100dvh - var(--cab) - 72px);
+  overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,.18)}
+#ficha.visible{opacity:1;visibility:visible;transform:translateY(-50%) translateX(0)}
+.ficha__cerrar{position:absolute;top:10px;right:10px;width:30px;height:30px;border:1px solid var(--filete);
+  background:var(--blanco);color:var(--marron);font-size:16px;line-height:1;cursor:pointer;display:grid;place-items:center}
+.ficha__cerrar:hover{background:var(--negro);color:#fff;border-color:var(--negro)}
+.ficha__familia{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px;padding-right:30px}
+.ficha__linea{font-size:var(--rotulo);letter-spacing:var(--track);text-transform:uppercase;color:var(--marron)}
+.ficha__estado{font-size:9px;letter-spacing:var(--track);text-transform:uppercase;color:var(--tinta);
+  background:var(--beige);padding:3px 7px;white-space:nowrap}
+.ficha__nombre{font-size:21px;line-height:1.25;margin:0 0 14px;font-weight:400;letter-spacing:.01em;color:var(--negro)}
+.ficha__precio{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 18px;padding-bottom:16px;border-bottom:1px solid var(--filete)}
+.ficha__cifra{font-size:30px;font-weight:400;font-variant-numeric:tabular-nums;letter-spacing:.01em;color:var(--negro);white-space:nowrap}
+.ficha__nota{font-size:10.5px;letter-spacing:1.1px;text-transform:uppercase;color:var(--marron-claro)}
+.ficha__datos{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:0 0 18px;padding:0;list-style:none;
+  border-top:1px solid var(--filete-suave)}
+.ficha__datos li{padding:10px 0;border-bottom:1px solid var(--filete-suave)}
+.ficha__datos li:nth-child(odd){padding-right:12px}
+.ficha__datos dt{font-size:9px;letter-spacing:1.6px;text-transform:uppercase;color:var(--marron-claro);margin-bottom:3px}
+.ficha__datos dd{margin:0;font-size:13px;font-weight:500;line-height:1.3;color:var(--tinta)}
+.ficha__porque{font-size:13px;line-height:1.6;color:#3A2E27;margin:0 0 20px;padding-left:12px;border-left:2px solid var(--marron)}
+.ficha__porque em{color:var(--marron);font-style:normal;font-weight:600}
+.boton{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:52px;border:0;
+  background:var(--negro);color:#fff;font:inherit;font-size:11px;font-weight:500;letter-spacing:var(--track);
+  text-transform:uppercase;cursor:pointer;transition:background .18s ease}
+.boton:hover{background:var(--marron)}
+.boton:active{transform:translateY(1px)}
+.boton svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6}
+.ficha__pie{margin:10px 0 0;font-size:10px;letter-spacing:.8px;color:var(--marron-claro);text-align:center}
+
+/* ---------- Etiqueta flotante ---------- */
+#etiqueta{position:absolute;z-index:5;left:0;top:0;transform:translate(-50%,-100%);pointer-events:none;opacity:0;
+  transition:opacity .16s ease;white-space:nowrap;display:flex;align-items:stretch}
+#etiqueta.visible{opacity:1}
+#etiqueta .n{font-size:10.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--tinta);background:var(--hueso);
+  border:1px solid var(--filete);border-right:0;padding:7px 10px;max-width:330px;overflow:hidden;text-overflow:ellipsis}
+#etiqueta .p{font-size:11.5px;font-weight:500;color:#fff;background:var(--marron);padding:7px 10px;letter-spacing:.04em}
+#etiqueta::after{content:"";position:absolute;left:50%;bottom:-9px;width:1px;height:9px;background:var(--marron);opacity:.8}
+
+/* ---------- Aviso dorado ---------- */
+#dorada{position:absolute;z-index:7;left:50%;top:26px;transform:translate(-50%,-12px);opacity:0;visibility:hidden;
+  transition:opacity .3s ease,transform .4s cubic-bezier(.2,.8,.2,1);text-align:center;padding:18px 26px;
+  background:var(--negro);border:1px solid var(--marron);box-shadow:0 20px 50px rgba(0,0,0,.45)}
+#dorada.visible{opacity:1;visibility:visible;transform:translate(-50%,0)}
+#dorada .t{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--oro-claro);margin:0 0 7px}
+#dorada .n{font-size:19px;font-weight:400;margin:0;color:#fff;letter-spacing:.01em}
+#dorada .s{font-size:11px;color:#CFC3B6;margin:7px 0 0;max-width:34ch}
+
+/* ---------- Aviso de cogida ---------- */
+#aviso{position:absolute;z-index:7;left:50%;bottom:64px;transform:translate(-50%,14px);opacity:0;visibility:hidden;
+  transition:opacity .22s ease,transform .26s ease;background:var(--hueso);border:1px solid var(--filete);
+  padding:12px 16px;font-size:12px;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 28px);
+  box-shadow:0 16px 40px rgba(0,0,0,.22)}
+#aviso.visible{opacity:1;visibility:visible;transform:translate(-50%,0)}
+#aviso svg{width:16px;height:16px;flex:none;stroke:var(--marron);fill:none;stroke-width:2}
+#aviso b{font-weight:600}
+
+/* ---------- Sin WebGL ---------- */
+#sin3d{position:absolute;inset:0;z-index:6;display:none;place-items:center;text-align:center;padding:24px;background:var(--hueso)}
+#sin3d.visible{display:grid}
+#sin3d .caja{max-width:440px;background:var(--blanco);border:1px solid var(--filete);padding:32px 28px}
+#sin3d h2{font-size:22px;font-weight:400;margin:0 0 10px;letter-spacing:.01em}
+#sin3d p{font-size:13px;color:#4A4038;line-height:1.6;margin:0 0 20px}
+#sin3d .boton{width:auto;display:inline-flex;padding:0 26px;text-decoration:none}
+
+/* ---------- Banda editorial ---------- */
+.editorial{background:var(--hueso);padding:clamp(40px,6vw,84px) 0 clamp(30px,4vw,52px);border-bottom:1px solid var(--filete)}
+.editorial__cab{display:grid;grid-template-columns:1.15fr .85fr;gap:clamp(24px,4vw,64px);align-items:start}
+.editorial__txt{padding-top:34px}
+.editorial h2{font-size:clamp(28px,4.2vw,52px);line-height:1.08;font-weight:400;letter-spacing:.005em;margin:0;color:var(--negro)}
+.editorial h2 em{font-style:normal;color:var(--marron)}
+.editorial__txt p{font-size:14px;line-height:1.7;color:#4A4038;margin:0 0 14px;max-width:46ch}
+.editorial__txt p:last-child{margin-bottom:0}
+.pruebas{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--filete);margin-top:clamp(26px,4vw,44px)}
+.prueba{background:var(--hueso);padding:22px 20px 22px 0}
+.prueba:nth-child(n+2){padding-left:22px}
+.prueba strong{display:block;font-size:clamp(26px,3vw,40px);font-weight:400;letter-spacing:.01em;color:var(--negro);
+  line-height:1;margin-bottom:8px;font-variant-numeric:tabular-nums}
+.prueba span{display:block;font-size:10px;letter-spacing:var(--track);text-transform:uppercase;color:var(--marron);line-height:1.5}
+
+/* ---------- Catálogo ---------- */
+.catalogo{background:var(--hueso);border-top:1px solid var(--filete);padding:clamp(34px,5vw,64px) 0 clamp(36px,6vw,72px)}
+.contenedor{width:100%;max-width:1360px;margin:0 auto;padding:0 var(--paso)}
+.catalogo__cab{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:30px}
+.rotulo{font-size:var(--rotulo);letter-spacing:var(--track);text-transform:uppercase;color:var(--marron);margin:0 0 10px}
+.catalogo__cab h2{font-size:clamp(24px,3vw,34px);font-weight:400;margin:0 0 10px;letter-spacing:.01em;color:var(--negro)}
+.catalogo__cab p{margin:0;font-size:13px;color:#4A4038;max-width:60ch;line-height:1.55}
+.rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1px;background:var(--filete)}
+.tarjeta{position:relative;display:flex;flex-direction:column;gap:9px;background:var(--blanco);padding:22px 20px 20px;
+  transition:box-shadow .2s ease,transform .2s ease}
+.tarjeta:hover{box-shadow:0 18px 40px rgba(0,0,0,.10);transform:translateY(-2px);z-index:1}
+.tarjeta__fam{font-size:9px;letter-spacing:var(--track);text-transform:uppercase;color:var(--marron-claro)}
+.tarjeta h3{font-size:14px;line-height:1.4;margin:0;font-weight:500;color:var(--negro)}
+.tarjeta__precio{font-size:19px;font-weight:400;font-variant-numeric:tabular-nums;color:var(--negro);margin:2px 0 0;letter-spacing:.01em;white-space:nowrap}
+.tarjeta__precio small{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--marron-claro);margin-left:8px}
+.tarjeta dl{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:6px 0 0;font-size:11px}
+.tarjeta dt{font-size:9px;letter-spacing:1.4px;text-transform:uppercase;color:var(--marron-claro);align-self:center}
+.tarjeta dd{margin:0;color:var(--tinta);font-weight:500}
+.tarjeta__porque{font-size:12px;line-height:1.55;color:#4A4038;margin:8px 0 0;padding-top:12px;border-top:1px solid var(--filete-suave)}
+.tarjeta__porque b{color:var(--marron);font-weight:600}
+.tarjeta__marca{position:absolute;top:20px;right:18px;font-size:8px;letter-spacing:1.4px;text-transform:uppercase;
+  color:var(--marron);border:1px solid var(--beige);background:var(--beige-claro);padding:3px 6px;max-width:45%;text-align:right}
+.pie-sitio{border-top:1px solid var(--filete);margin-top:44px;padding-top:24px;display:flex;flex-wrap:wrap;gap:14px;
+  justify-content:space-between;align-items:center;font-size:11px;color:var(--marron-claro);letter-spacing:.02em}
+.pie-sitio p{margin:0}
+
+/* ---------- Móvil ---------- */
+@media (max-width:1100px){
+  .nav{display:none}
+}
+@media (max-width:900px){
+  :root{--cab:58px}
+  .editorial__cab{grid-template-columns:1fr;align-items:start;gap:18px}
+  .editorial__txt{padding-top:0}
+  .pruebas{grid-template-columns:1fr;gap:1px}
+  .prueba,.prueba:nth-child(n+2){padding:16px 0}
+  .prueba{display:flex;align-items:baseline;gap:14px}
+  .prueba strong{margin:0;font-size:24px}
+  .prueba span{font-size:9px}
+  .barra-anuncio{display:none}
+  #ficha{left:0;right:0;bottom:0;top:auto;width:auto;max-height:66dvh;padding:20px 18px 18px;
+    border-left:0;border-right:0;border-bottom:0;transform:translateY(16px);box-shadow:0 -18px 50px rgba(0,0,0,.28)}
+  #ficha.visible{transform:translateY(0)}
+  .ficha__nombre{font-size:18px;padding-right:34px}
+  .ficha__cifra{font-size:26px}
+  #escena{height:calc(100dvh - var(--cab))}
+  .marcador{gap:14px}
+  .dato__et{font-size:9px;letter-spacing:1.4px}
+  .dato__va{font-size:14px}
+  #aviso{bottom:auto;top:16px}
+  #dorada{width:calc(100vw - 24px);padding:16px 18px}
+  #dorada .n{font-size:16px}
+}
+@media (max-width:560px){
+  .marca__logo{height:28px}
+  .marca__logo svg{height:28px}
+  .dato:nth-child(3){display:none}
+  .pista{left:12px;right:12px;transform:none;font-size:9px;gap:10px;justify-content:center}
+  .tarjeta__marca{position:static;max-width:none;align-self:flex-start}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
+</style>
+</head>
+<body class="nz">
+
+<a class="salto" href="#catalogo">Saltar a la lista de maletas</a>
+
+<!-- ===================== CABECERA DE MARCA ===================== -->
+  <div class="barra-anuncio" role="note">
+    <span>Garantía limitada de por vida</span><span class="sep">·</span>
+    <span>220.000 profesionales al día</span><span class="sep">·</span>
+    <span>Desde 1987</span>
+  </div>
+
+  <header class="cabecera">
+    <a class="marca" href="#catalogo" aria-label="Travelpro · ir al catálogo de maletas">
+      <span class="marca__logo"><svg viewBox="0 0 184 58" fill="none" aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg">
+<path d="M22.8757 0C22.8757 25.7176 30.7938 47.8391 42.1483 57.6502H33.6851C33.6851 50.6854 28.039 45.0393 21.0741 45.0393C14.1093 45.0393 8.46316 50.6854 8.46316 57.6502H0C11.3545 47.8391 19.2726 25.7176 19.2726 0H22.8757ZM21.0741 21.0942C19.6644 29.0864 17.4699 36.423 14.6426 42.7615C18.7369 40.9943 23.4114 40.9943 27.5057 42.7615C24.6784 36.423 22.4839 29.0864 21.0741 21.0942Z" fill="#675144"></path>
+<path d="M163.016 34.9309C163.016 35.558 163.076 36.1749 163.198 36.7818C163.319 37.3684 163.521 37.9045 163.805 38.39C164.108 38.8552 164.502 39.2294 164.988 39.5126C165.473 39.7958 166.08 39.9374 166.809 39.9374C167.537 39.9374 168.144 39.7958 168.629 39.5126C169.135 39.2294 169.529 38.8552 169.812 38.39C170.116 37.9045 170.328 37.3684 170.45 36.7818C170.571 36.1749 170.632 35.558 170.632 34.9309C170.632 34.3038 170.571 33.6869 170.45 33.08C170.328 32.4732 170.116 31.9371 169.812 31.4718C169.529 31.0066 169.135 30.6324 168.629 30.3492C168.144 30.0457 167.537 29.894 166.809 29.894C166.08 29.894 165.473 30.0457 164.988 30.3492C164.502 30.6324 164.108 31.0066 163.805 31.4718C163.521 31.9371 163.319 32.4732 163.198 33.08C163.076 33.6869 163.016 34.3038 163.016 34.9309ZM158.707 34.9309C158.707 33.6767 158.899 32.5439 159.284 31.5325C159.668 30.5009 160.214 29.6311 160.922 28.9231C161.63 28.1948 162.48 27.6386 163.471 27.2542C164.462 26.8497 165.575 26.6474 166.809 26.6474C168.042 26.6474 169.155 26.8497 170.146 27.2542C171.158 27.6386 172.017 28.1948 172.725 28.9231C173.433 29.6311 173.979 30.5009 174.364 31.5325C174.748 32.5439 174.94 33.6767 174.94 34.9309C174.94 36.1851 174.748 37.3178 174.364 38.3293C173.979 39.3407 173.433 40.2105 172.725 40.9387C172.017 41.6467 171.158 42.1929 170.146 42.5772C169.155 42.9616 168.042 43.1537 166.809 43.1537C165.575 43.1537 164.462 42.9616 163.471 42.5772C162.48 42.1929 161.63 41.6467 160.922 40.9387C160.214 40.2105 159.668 39.3407 159.284 38.3293C158.899 37.3178 158.707 36.1851 158.707 34.9309Z" fill="#675144"></path>
+<path d="M147.932 27.0722H152.028V29.9851H152.089C152.291 29.4996 152.564 29.0546 152.908 28.65C153.252 28.2252 153.647 27.8712 154.092 27.588C154.537 27.2846 155.012 27.0519 155.518 26.8901C156.023 26.7283 156.549 26.6474 157.096 26.6474C157.379 26.6474 157.692 26.6979 158.036 26.7991V30.8043C157.834 30.7639 157.591 30.7335 157.308 30.7133C157.025 30.6728 156.752 30.6526 156.489 30.6526C155.7 30.6526 155.032 30.7841 154.486 31.0471C153.94 31.31 153.495 31.6741 153.151 32.1394C152.827 32.5844 152.595 33.1103 152.453 33.7172C152.312 34.324 152.241 34.9815 152.241 35.6895V42.7593H147.932V27.0722Z" fill="#675144"></path>
+<path d="M137.303 39.9374C138.011 39.9374 138.597 39.7958 139.063 39.5126C139.548 39.2294 139.932 38.8653 140.216 38.4203C140.519 37.955 140.731 37.419 140.853 36.8121C140.974 36.2053 141.035 35.5883 141.035 34.9612C141.035 34.3342 140.964 33.7172 140.822 33.1103C140.701 32.5035 140.489 31.9674 140.185 31.5022C139.882 31.0167 139.487 30.6324 139.002 30.3492C138.537 30.0457 137.96 29.894 137.272 29.894C136.564 29.894 135.968 30.0457 135.482 30.3492C135.017 30.6324 134.633 31.0066 134.329 31.4718C134.046 31.9371 133.844 32.4732 133.722 33.08C133.601 33.6869 133.54 34.3139 133.54 34.9612C133.54 35.5883 133.601 36.2053 133.722 36.8121C133.864 37.419 134.076 37.955 134.359 38.4203C134.663 38.8653 135.057 39.2294 135.543 39.5126C136.028 39.7958 136.615 39.9374 137.303 39.9374ZM129.383 27.0722H133.48V29.0748H133.54C134.066 28.2252 134.734 27.6082 135.543 27.2239C136.352 26.8395 137.242 26.6474 138.213 26.6474C139.447 26.6474 140.509 26.88 141.399 27.3453C142.289 27.8105 143.027 28.4275 143.614 29.1962C144.201 29.9648 144.636 30.865 144.919 31.8966C145.202 32.9081 145.343 33.9701 145.343 35.0826C145.343 36.1345 145.202 37.1459 144.919 38.1169C144.636 39.0878 144.201 39.9475 143.614 40.696C143.048 41.4444 142.329 42.0412 141.46 42.4862C140.61 42.9312 139.609 43.1537 138.456 43.1537C137.485 43.1537 136.585 42.9616 135.755 42.5772C134.946 42.1727 134.279 41.586 133.753 40.8174H133.692V48.2513H129.383V27.0722Z" fill="#675144"></path>
+<path d="M121.682 21.0946H125.99V42.7592H121.682V21.0946Z" fill="#675144"></path>
+<path d="M114.697 33.2317C114.494 32.1394 114.13 31.31 113.604 30.7436C113.099 30.1772 112.32 29.894 111.268 29.894C110.58 29.894 110.004 30.0154 109.538 30.2581C109.093 30.4807 108.729 30.7639 108.446 31.1077C108.183 31.4516 107.991 31.8157 107.87 32.2001C107.768 32.5844 107.708 32.9283 107.688 33.2317H114.697ZM107.688 35.9625C107.748 37.3583 108.102 38.3697 108.75 38.9968C109.397 39.6239 110.327 39.9374 111.541 39.9374C112.411 39.9374 113.159 39.725 113.786 39.3002C114.413 38.8552 114.798 38.39 114.939 37.9045H118.732C118.125 39.7857 117.195 41.1309 115.941 41.94C114.687 42.7492 113.169 43.1537 111.389 43.1537C110.155 43.1537 109.043 42.9616 108.052 42.5772C107.06 42.1727 106.221 41.6063 105.533 40.878C104.845 40.1498 104.309 39.28 103.925 38.2686C103.561 37.2572 103.379 36.1446 103.379 34.9309C103.379 33.7577 103.571 32.6653 103.955 31.6539C104.34 30.6425 104.886 29.7727 105.594 29.0444C106.302 28.296 107.141 27.7094 108.112 27.2846C109.104 26.8598 110.196 26.6474 111.389 26.6474C112.724 26.6474 113.888 26.9103 114.879 27.4363C115.87 27.942 116.679 28.6298 117.306 29.4996C117.953 30.3694 118.419 31.3606 118.702 32.4732C118.985 33.5857 119.086 34.7488 119.005 35.9625H107.688Z" fill="#675144"></path>
+<path d="M97.051 42.7588H92.2569L86.8862 27.0717H91.4073L94.7146 37.7826H94.7753L98.0826 27.0717H102.361L97.051 42.7588Z" fill="#675144"></path>
+<path d="M70.7677 31.8966C70.8284 30.8852 71.0812 30.0457 71.5263 29.3782C71.9713 28.7107 72.5377 28.1746 73.2255 27.7701C73.9132 27.3655 74.6819 27.0823 75.5315 26.9205C76.4013 26.7384 77.2711 26.6474 78.141 26.6474C78.9299 26.6474 79.7289 26.7081 80.538 26.8294C81.3471 26.9306 82.0855 27.143 82.753 27.4666C83.4206 27.7903 83.9667 28.2454 84.3915 28.832C84.8163 29.3984 85.0287 30.157 85.0287 31.1077V39.2699C85.0287 39.9779 85.0692 40.6555 85.1501 41.3028C85.231 41.9501 85.3726 42.4356 85.5749 42.7593H81.2055C81.1246 42.5165 81.0538 42.2738 80.9932 42.0311C80.9527 41.7681 80.9224 41.5051 80.9021 41.2422C80.2144 41.9501 79.4052 42.4457 78.4747 42.7289C77.5442 43.0121 76.5935 43.1537 75.6225 43.1537C74.8741 43.1537 74.1762 43.0627 73.5289 42.8807C72.8816 42.6986 72.3152 42.4154 71.8297 42.0311C71.3442 41.6467 70.9599 41.1612 70.6767 40.5746C70.4137 39.988 70.2822 39.2901 70.2822 38.481C70.2822 37.5909 70.4339 36.8627 70.7374 36.2963C71.061 35.7097 71.4656 35.2444 71.9511 34.9006C72.4568 34.5567 73.0232 34.3038 73.6503 34.142C74.2976 33.9599 74.9449 33.8183 75.5922 33.7172C76.2395 33.6161 76.8767 33.5351 77.5038 33.4745C78.1308 33.4138 78.6871 33.3227 79.1726 33.2014C79.6581 33.08 80.0424 32.9081 80.3256 32.6855C80.6088 32.4428 80.7403 32.0989 80.7201 31.6539C80.7201 31.1886 80.6392 30.8245 80.4773 30.5616C80.3357 30.2784 80.1334 30.066 79.8705 29.9244C79.6277 29.7625 79.3344 29.6614 78.9905 29.6209C78.6669 29.5603 78.3129 29.5299 77.9286 29.5299C77.079 29.5299 76.4114 29.712 75.9259 30.0761C75.4405 30.4402 75.1573 31.047 75.0764 31.8966H70.7677ZM80.7201 35.0826C80.538 35.2444 80.3054 35.3759 80.0222 35.4771C79.7592 35.558 79.4659 35.6288 79.1423 35.6895C78.8388 35.7501 78.5152 35.8007 78.1713 35.8412C77.8274 35.8816 77.4835 35.9322 77.1396 35.9929C76.816 36.0536 76.4923 36.1345 76.1687 36.2356C75.8653 36.3368 75.5922 36.4784 75.3494 36.6604C75.1269 36.8223 74.9449 37.0347 74.8033 37.2976C74.6617 37.5606 74.5909 37.8944 74.5909 38.2989C74.5909 38.6833 74.6617 39.0069 74.8033 39.2699C74.9449 39.5329 75.137 39.7453 75.3798 39.9071C75.6225 40.0487 75.9057 40.1498 76.2294 40.2105C76.553 40.2712 76.8868 40.3015 77.2307 40.3015C78.0803 40.3015 78.7377 40.1599 79.2029 39.8767C79.6682 39.5935 80.0121 39.2598 80.2346 38.8754C80.4571 38.4709 80.5886 38.0663 80.629 37.6617C80.6897 37.2572 80.7201 36.9335 80.7201 36.6908V35.0826Z" fill="#675144"></path>
+<path d="M59.1567 27.0722H63.253V29.9851H63.3137C63.516 29.4996 63.789 29.0546 64.1329 28.65C64.4768 28.2252 64.8713 27.8712 65.3163 27.588C65.7613 27.2846 66.2367 27.0519 66.7424 26.8901C67.2481 26.7283 67.774 26.6474 68.3202 26.6474C68.6034 26.6474 68.9169 26.6979 69.2608 26.7991V30.8043C69.0585 30.7639 68.8158 30.7335 68.5326 30.7133C68.2494 30.6728 67.9763 30.6526 67.7133 30.6526C66.9244 30.6526 66.2569 30.7841 65.7107 31.0471C65.1646 31.31 64.7195 31.6741 64.3757 32.1394C64.052 32.5844 63.8194 33.1103 63.6778 33.7172C63.5362 34.324 63.4654 34.9815 63.4654 35.6895V42.7593H59.1567V27.0722Z" fill="#675144"></path>
+<path d="M48.6417 25.1H42.1484V21.0948H59.8988V25.1H53.4055V42.7594H48.6417V25.1Z" fill="#675144"></path>
+<path d="M181.087 27.1391L182.016 29.7464L182.956 27.1391H183.99V30.7813H183.322V27.8424L182.313 30.7813H181.73L180.715 27.8424V30.7813H180.047V27.1391H181.087ZM176.324 27.747V27.1391H179.429V27.747H178.238V30.7813H177.515V27.747H176.324Z" fill="#675144"></path>
+</svg>
+</span>
+    </a>
+    <nav class="nav" aria-label="Secciones">
+      <a href="#catalogo">Cabina</a>
+      <a href="#catalogo">Facturado</a>
+      <a href="#catalogo">Mochilas</a>
+      <a href="#catalogo">Platinum</a>
+      <a href="#historia">Nuestra historia</a>
+    </nav>
+    <div class="marcador">
+      <div class="dato">
+        <span class="dato__et"><span class="pulso" aria-hidden="true"></span>Viajeros en la cinta</span>
+        <span class="dato__va" id="usuarios">970.000</span>
+      </div>
+      <div class="dato">
+        <span class="dato__et">Maletas elegidas</span>
+        <span class="dato__va" id="cogidas">0</span>
+      </div>
+      <div class="dato">
+        <span class="dato__et">Faltan para la dorada</span>
+        <span class="dato__va dato__va--oro" id="proxima">30.000</span>
+      </div>
+    </div>
+  </header>
+
+<!-- ===================== ESCENA ===================== -->
+<div id="escena">
+  <canvas id="lienzo" aria-label="Cinta de equipajes en 3D con las maletas Travelpro" role="img"></canvas>
+  <div class="viñeta" aria-hidden="true"></div>
+
+
+  <div class="pista" id="pista">
+    <span><b>Pasa el cursor</b> por una maleta<span class="oculto-movil"> para ver precio y por qué es la mejor</span></span>
+    <span class="pista__tecla">clic</span><span>para elegirla</span>
+    <span class="pista__tecla">arrastra</span><span>para girar</span>
+  </div>
+
+  <aside id="ficha" role="dialog" aria-label="Detalle de la maleta" aria-hidden="true">
+    <button class="ficha__cerrar" id="f-cerrar" type="button" aria-label="Cerrar la ficha">×</button>
+    <div class="ficha__familia">
+      <span class="ficha__linea" id="f-linea">MAXLITE 5</span>
+      <span class="ficha__estado" id="f-estado">En la cinta</span>
+    </div>
+    <h2 class="ficha__nombre" id="f-nombre">Maxlite 5 Slim Expandable Cabin</h2>
+    <div class="ficha__precio">
+      <span class="ficha__cifra" id="f-precio">169,99 €</span>
+      <span class="ficha__nota">IVA incl. · PVP catálogo EU</span>
+    </div>
+    <ul class="ficha__datos">
+      <li><dt id="f-medidas-et">Medidas</dt><dd id="f-medidas">55 × 40 × 20 cm</dd></li>
+      <li><dt>Material</dt><dd id="f-material">Soft-shell</dd></li>
+      <li><dt>Garantía</dt><dd>De por vida</dd></li>
+      <li><dt>Uso</dt><dd id="f-uso">Cabina low-cost</dd></li>
+    </ul>
+    <p class="ficha__porque" id="f-porque"></p>
+    <button class="boton" id="f-coger" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+      Elegir esta maleta
+    </button>
+    <p class="ficha__pie">Se retira de la cinta y se añade a tu selección.</p>
+  </aside>
+
+  <div id="dorada" role="status">
+    <p class="t">Maleta dorada</p>
+    <p class="n">Has desbloqueado un viaje</p>
+    <p class="s">Uno de cada millón de viajeros se la encuentra en la cinta. Elígela antes de que dé la vuelta.</p>
+  </div>
+
+  <div id="etiqueta" aria-hidden="true"><span class="n"></span><span class="p"></span></div>
+
+  <div id="aviso" role="status" aria-live="polite">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+    <span id="aviso-texto"></span>
+  </div>
+
+  <div id="sin3d">
+    <div class="caja">
+      <h2>Tu navegador no puede dibujar la cinta</h2>
+      <p>La escena 3D necesita WebGL. Abajo tienes todas las maletas con precio, medidas y por qué son las mejores: la misma información, sin la cinta.</p>
+      <a class="boton" href="#catalogo" style="text-decoration:none">Ver las maletas</a>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== BANDA EDITORIAL ===================== -->
+<section class="editorial" id="historia">
+  <div class="contenedor">
+    <div class="editorial__cab">
+      <div>
+        <p class="rotulo">Desde 1987 · Built for the journey</p>
+        <h2>Nacida en una <em>cabina de mando</em>.</h2>
+      </div>
+      <div class="editorial__txt">
+        <p>En 1987, Robert Plath, capitán de 747, puso dos ruedas y un asa larga a su maleta para poder arrastrarla en vertical. Lo llamó Rollaboard. No se lo vendió a los pasajeros: se lo vendió a las tripulaciones, el cliente más exigente del mundo.</p>
+        <p>Casi cuarenta años después, esas ruedas recorren 186 millones de millas al día en manos de profesionales que viven en un aeropuerto. La maleta que se inventó para no fallar sigue siendo la promesa.</p>
+      </div>
+    </div>
+    <div class="pruebas">
+      <div class="prueba"><strong>220.000</strong><span>Profesionales la usan cada día</span></div>
+      <div class="prueba"><strong>90+</strong><span>Aerolíneas con acuerdo de tripulación</span></div>
+      <div class="prueba"><strong>1987</strong><span>El año en que se inventó la maleta vertical</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CATÁLOGO ESTÁTICO ===================== -->
+<main class="catalogo" id="catalogo">
+  <div class="contenedor">
+    <div class="catalogo__cab">
+      <div>
+        <p class="rotulo">Las diez de la cinta</p>
+        <h2>Si no quieres esperar a que pase, aquí están todas</h2>
+        <p>Cada maleta lleva su precio de catálogo, sus medidas reales y el motivo por el que gana en su franja. Sin girar la cinta, sin depender del 3D.</p>
+      </div>
+      <p class="rotulo" style="text-align:right">PVP de catálogo oficial · 21-nov-2026</p>
+    </div>
+
+    <div class="rejilla" id="rejilla">
+
+      <article class="tarjeta">
+        <span class="tarjeta__marca">La que siempre pasa</span>
+        <span class="tarjeta__fam">Maxlite 5 · soft-shell</span>
+        <h3>Maxlite 5 Slim Expandable Cabin 55 cm</h3>
+        <p class="tarjeta__precio">169,99 € <small>cabina</small></p>
+        <dl><dt>Medidas</dt><dd>55 × 40 × 20 cm</dd><dt>Tipo</dt><dd>Soft-shell expandible</dd></dl>
+        <p class="tarjeta__porque"><b>Por qué es la mejor:</b> clavada a la medida low-cost (55×40×20) y aun así es una soft-shell de verdad, con estructura y garantía de por vida. La compra sin sustos.</p>
+      </article>
+
+      <article class="tarjeta">
+        <span class="tarjeta__marca">La de la tripulación</span>
+        <span class="tarjeta__fam">FlightCrew 5 · soft-shell</span>
+        <h3>FlightCrew 5 Expandable Carry-On Spinner</h3>
+        <p class="tarjeta__precio">239,99 € <small>cabina</small></p>
+        <dl><dt>Tipo</dt><dd>Soft-shell 4 ruedas</dd><dt>Origen</dt><dd>Línea de tripulaciones</dd></dl>
+        <p class="tarjeta__porque"><b>Por qué es la mejor:</b> es la gama que nació del uso profesional: ruedas y asa diseñadas para 300 días al año de aeropuerto. Mismo precio que muchas «de diseño», con historia detrás.</p>
+      </article>
+
+      <article class="tarjeta">
+        <span class="tarjeta__marca">La rígida equilibrada</span>
+        <span class="tarjeta__fam">Platinum Elite · hardshell</span>
+        <h3>Platinum Elite Slim Cabin Hardshell Spinner V2</h3>
+        <p class="tarjeta__precio">359,99 € <small>cabina</small></p>
+        <dl><dt>Medidas</dt><dd>55 × 40 × 20 cm</dd><dt>Tipo</dt><dd>Hardshell 4 ruedas</dd></dl>
+        <p class="tarjeta__porque"><b>Por qué es la mejor:</b> rígida, slim y con la medida exacta de cabina. Es la respuesta a quien quiere carcasa sin renunciar a pasar el arco: el tramo 300–400 € con garantía de por vida.</p>
+      </article>
+
+      <article class="tarjeta">
+        <span class="tarjeta__marca">La de colección</span>
+        <span class="tarjeta__fam">Platinum Reserve · hardshell</span>
+        <h3>Platinum Reserve Compact Cabin Hardshell Spinner</h3>
+        <p class="tarjeta__precio">400,00 € <small>cabina</small></p>
+        <dl><dt>Medidas</dt><dd>55,9 × 35,6 × 22,9 cm</dd><dt>Tipo</dt><dd>Hardshell compacta</dd></dl>
+        <p class="tarjeta__porque"><b>Por qué es la mejor:</b> la tope de gama en cabina: la más compacta de ancho (35,6 cm), la que mejor pasa por pasillos y trenes. Para quien viaja mucho y quiere la mejor pieza, no la más grande.</p>
+      </article>
+
+      <article class="tarjeta">
+        <span class="tarjeta__marca">La ligera de verdad</span>
+        <span class="tarjeta__fam">Maxlite Air V2 · hardshell</span>
+        <h3>Maxlite Air V2 Cabin Hard Shell Spinner</h3>
+        <p class="tarjeta__precio">169,99 € <small>cabina</small></p>
+        <dl><dt>Medidas</dt><dd>55,9 × 35,6 × 22,9 cm</dd><dt>Tipo</dt><dd>Hardshell</dd></dl>
+        <p class="tarjeta__porque"><b>Por qué es la mejor:</b> carcasa rígida por el precio de una blanda. Si el miedo es la bodega, la respuesta barata: misma familia constructiva que la gama alta, a mitad de precio.</p>
+      </article>
+
+      <article class="tarjeta">
+        <span class="tarjeta__marca">La del pasillo</span>
+        <span class="tarjeta__fam">Maxlite Air V2 · hardshell</span>
+        <h3>Maxlite Air V2 Slim Cabin Hard Shell Spinner</h3>
+        <p class="tarjeta__precio">135,99 € <small>cabina</small></p>
+        <dl><dt>Medidas</dt><dd>55 × 40 × 19,8 cm</dd><dt>Tipo</dt><dd>Hardshell slim</dd></dl>
+        <p class="tarjeta__porque"><b>Por qué es la mejor:</b> 19,8 cm de fondo: entra donde otras de 20 no entran, y a 135,99 € es la entrada más barata a una rígida con garantía de por vida.</p>
+      </article>
+
+      <article class="tarjeta">
+        <span class="tarjeta__marca">La todoterreno</span>
+        <span class="tarjeta__fam">VersaPack+ · soft-shell</span>
+        <h3>VersaPack+ Compact Expandable Cabin Spinner 56 cm</h3>
+        <p class="tarjeta__precio">149,99 € <small>cabina</small></p>
+        <dl><dt>Medidas</dt><dd>56 × 36 × 23 cm</dd><dt>Tipo</dt><dd>Soft-shell expandible</dd></dl>
+        <p class="tarjeta__porque"><b>Por qué es la mejor:</b> la más estrecha de las blandas (36 cm de ancho): pasillos, trenes y maleteros pequeños. Expande y no se desborda de precio.</p>
+      </article>
+
+      <article class="tarjeta">
+        <span class="tarjeta__marca">La clásica</span>
+        <span class="tarjeta__fam">Crew Classic · soft-shell</span>
+        <h3>Crew Classic Expandable Cabin Rollaboard 58 cm</h3>
+        <p class="tarjeta__precio">199,99 € <small>cabina</small></p>
+        <dl><dt>Medidas</dt><dd>58 × 37 × 24 cm</dd><dt>Tipo</dt><dd>Rollaboard 2 ruedas</dd></dl>
+        <p class="tarjeta__porque"><b>Por qué es la mejor:</b> el formato original en versión 2026: dos ruedas y asa larga, la silueta que inventó Bob Plath en 1987. Para quien prefiere arrastrar a empujar.</p>
+      </article>
+
+      <article class="tarjeta">
+        <span class="tarjeta__marca">La ejecutiva</span>
+        <span class="tarjeta__fam">Optima · hardshell</span>
+        <h3>Optima Expandable Compact Cabin Spinner</h3>
+        <p class="tarjeta__precio">259,99 € <small>cabina</small></p>
+        <dl><dt>Medidas</dt><dd>55,9 × 35,6 × 22,9 cm</dd><dt>Tipo</dt><dd>Hardshell expandible</dd></dl>
+        <p class="tarjeta__porque"><b>Por qué es la mejor:</b> compacta, rígida y expandible: la única de la cinta que suma las tres. El punto medio entre la Platinum y la Maxlite Air.</p>
+      </article>
+
+      <article class="tarjeta">
+        <span class="tarjeta__marca">La de trabajo</span>
+        <span class="tarjeta__fam">Platinum Elite · mochila</span>
+        <h3>Platinum Elite Business Backpack</h3>
+        <p class="tarjeta__precio">249,99 € <small>mochila</small></p>
+        <dl><dt>Medidas</dt><dd>44 × 32 × 22 cm</dd><dt>Tipo</dt><dd>Mochila de negocio</dd></dl>
+        <p class="tarjeta__porque"><b>Por qué es la mejor:</b> la mochila que aguanta el avión de las 6 de la mañana y la reunión de las 9: organizador, protección de portátil y el mismo apellido que la maleta.</p>
+      </article>
+
+      <article class="tarjeta">
+        <span class="tarjeta__marca">La diaria</span>
+        <span class="tarjeta__fam">Altitude · mochila</span>
+        <h3>Altitude All-Purpose Full Expansion Laptop Backpack 24–34 L</h3>
+        <p class="tarjeta__precio">119,99 € <small>mochila</small></p>
+        <dl><dt>Medidas</dt><dd>47 × 36 × 20 cm</dd><dt>Tipo</dt><dd>Mochila expandible</dd></dl>
+        <p class="tarjeta__porque"><b>Por qué es la mejor:</b> 24 litros para el día y 34 para el finde, al precio de una mochila de marca blanca. La puerta de entrada al ecosistema sin comprar maleta.</p>
+      </article>
+
+      <article class="tarjeta">
+        <span class="tarjeta__marca">La primera maleta</span>
+        <span class="tarjeta__fam">Pathways 3.0 · hardshell</span>
+        <h3>Pathways 3.0 Compact Cabin Hardside Expandable Spinner</h3>
+        <p class="tarjeta__precio">94,99 € <small>cabina</small></p>
+        <dl><dt>Tipo</dt><dd>Hardside expandible</dd><dt>Uso</dt><dd>Primer equipaje</dd></dl>
+        <p class="tarjeta__porque"><b>Por qué es la mejor:</b> por debajo de 100 € con la marca que usa la tripulación. Es la maleta que se compra una vez y se recomienda diez.</p>
+      </article>
+
+    </div>
+
+    <footer class="pie-sitio">
+      <p>Precios de catálogo oficial (eu.travelpro.com, 21-nov-2026), IVA incluido. Medidas en cm; pueden variar por acabado.</p>
+      <p>Hecho con ❤️ por David Antizar</p>
+    </footer>
+  </div>
+</main>
+
+<noscript>
+  <div style="max-width:720px;margin:0 auto;padding:24px;background:#0d1219;border:1px solid rgba(233,238,247,.15);border-radius:14px;color:#cbd5e1;font-size:14px;line-height:1.6">
+    <strong style="color:#e9eef7">La cinta necesita JavaScript.</strong>
+    La escena 3D no se puede dibujar sin él, pero la lista de abajo tiene todas las maletas con precio, medidas y el motivo por el que son las mejores. Nada importante depende de la animación.
+  </div>
+</noscript>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+/* =====================================================================
+   TRAVELPRO · LA CINTA
+   Escena 3D: cinta de recogida con las maletas reales del catálogo EU.
+   Sin dependencias más allá de three.js (UMD, CDN) y sin build.
+   ===================================================================== */
+(function () {
+  'use strict';
+
+  /* ---------- 1. Datos (catálogo oficial, 21-nov-2026) ---------- */
+  var PRODUCTOS = [
+    { id:'maxlite5-slim', linea:'Maxlite 5', nombre:'Maxlite 5 Slim Expandable Cabin', precio:'169,99 €',
+      medidas:'55 × 40 × 20 cm', material:'Soft-shell expandible', uso:'Cabina low-cost',
+      tipo:'soft', color:0x1b3b5a, acento:0x4c8dff,
+      porque:'Clavada a la medida low-cost y aun así <em>soft-shell de verdad</em>, con estructura y garantía de por vida. La compra sin sustos.' },
+    { id:'flightcrew5', linea:'FlightCrew 5', nombre:'FlightCrew 5 Expandable Carry-On Spinner', precio:'239,99 €',
+      medidas:'Cabina · 4 ruedas', medidasReales:false, material:'Blanda técnica', uso:'Tripulación / frecuente',
+      tipo:'soft', color:0x2b3038, acento:0xff5a3c,
+      porque:'La gama que nació del uso profesional: ruedas y asa para <em>300 días al año</em> de aeropuerto. Mismo precio que muchas «de diseño», con historia detrás.' },
+    { id:'platinum-elite-slim', linea:'Platinum Elite', nombre:'Platinum Elite Slim Cabin Hardshell Spinner V2', precio:'359,99 €',
+      medidas:'55 × 40 × 20 cm', material:'Hardshell', uso:'Rígida de cabina',
+      tipo:'hard', color:0x3c4756, acento:0xf5c451,
+      porque:'Rígida, slim y con la medida exacta de cabina. La respuesta a quien quiere carcasa <em>sin renunciar a pasar el arco</em>.' },
+    { id:'platinum-reserve', linea:'Platinum Reserve', nombre:'Platinum Reserve Compact Cabin Hardshell', precio:'400,00 €',
+      medidas:'55,9 × 35,6 × 22,9 cm', material:'Hardshell compacta', uso:'Tope de gama cabina',
+      tipo:'hard', color:0x233140, acento:0xd9c39a,
+      porque:'La más compacta de ancho (35,6 cm): <em>pasillos, trenes y maleteros</em>. Para quien quiere la mejor pieza, no la más grande.' },
+    { id:'maxlite-air-v2', linea:'Maxlite Air V2', nombre:'Maxlite Air V2 Cabin Hard Shell Spinner', precio:'169,99 €',
+      medidas:'55,9 × 35,6 × 22,9 cm', material:'Hardshell', uso:'Rígida asequible',
+      tipo:'hard', color:0x2f5d6b, acento:0x53c9e8,
+      porque:'Carcasa rígida por el precio de una blanda. Si el miedo es la bodega, <em>la respuesta barata</em>.' },
+    { id:'maxlite-air-slim', linea:'Maxlite Air V2', nombre:'Maxlite Air V2 Slim Cabin Hard Shell', precio:'135,99 €',
+      medidas:'55 × 40 × 19,8 cm', material:'Hardshell slim', uso:'Cabina mínima',
+      tipo:'hard', color:0x4c5663, acento:0x7ef0c0,
+      porque:'19,8 cm de fondo: <em>entra donde otras de 20 no entran</em>. La entrada más barata a una rígida con garantía de por vida.' },
+    { id:'versapack', linea:'VersaPack+', nombre:'VersaPack+ Compact Expandable Cabin Spinner 56 cm', precio:'149,99 €',
+      medidas:'56 × 36 × 23 cm', material:'Soft-shell expandible', uso:'Todoterreno',
+      tipo:'soft', color:0x2b3a56, acento:0x8fa6ff,
+      porque:'La más estrecha de las blandas (36 cm): <em>pasillos, trenes y maleteros pequeños</em>. Expande sin desbordarse de precio.' },
+    { id:'crew-classic', linea:'Crew Classic', nombre:'Crew Classic Expandable Cabin Rollaboard', precio:'199,99 €',
+      medidas:'58 × 37 × 24 cm', material:'Rollaboard 2 ruedas', uso:'El original',
+      tipo:'roller', color:0x3d342a, acento:0xe0b060,
+      porque:'El formato original en versión 2026: dos ruedas y asa larga, <em>la silueta que inventó Bob Plath en 1987</em>.' },
+    { id:'optima', linea:'Optima', nombre:'Optima Expandable Compact Cabin Spinner', precio:'259,99 €',
+      medidas:'55,9 × 35,6 × 22,9 cm', material:'Hardshell expandible', uso:'Ejecutiva',
+      tipo:'hard', color:0x553a3c, acento:0xffb4a2,
+      porque:'Compacta, rígida y expandible: <em>la única que suma las tres</em>. El punto medio entre la Platinum y la Maxlite Air.' },
+    { id:'platinum-backpack', linea:'Platinum Elite', nombre:'Platinum Elite Business Backpack', precio:'249,99 €',
+      medidas:'44 × 32 × 22 cm', material:'Mochila de negocio', uso:'Trabajo',
+      tipo:'mochila', color:0x24303a, acento:0x9aa7bd,
+      porque:'Aguanta el avión de las 6 y la reunión de las 9: <em>organizador, protección de portátil</em> y el mismo apellido que la maleta.' }
+  ];
+
+  var fmt = new Intl.NumberFormat('es-ES');
+  var $ = function (id) { return document.getElementById(id); };
+  var escena = $('escena'), lienzo = $('lienzo'), ficha = $('ficha');
+
+  function sin3d(motivo) {
+    $('sin3d').classList.add('visible');
+    $('lienzo').style.display = 'none';
+    $('pista').style.display = 'none';
+    ficha.classList.remove('visible');
+    if (window.console) console.warn('Sin 3D:', motivo);
+  }
+  if (!window.THREE) { sin3d('three.js no cargó (¿sin red?)'); return; }
+
+  var renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas: lienzo, antialias: true, alpha: false, powerPreference: 'high-performance' });
+  } catch (e) { sin3d('WebGL no disponible'); return; }
+  if (!renderer.getContext()) { sin3d('sin contexto WebGL'); return; }
+
+  var reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(escena.clientWidth, escena.clientHeight, false);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.55;
+
+  /* ---------- 2. Escena, cámara, luces ---------- */
+  var escena3d = new THREE.Scene();
+  escena3d.background = new THREE.Color(0x0B0908);
+  escena3d.fog = new THREE.FogExp2(0x0B0908, 0.016);
+
+  // Entorno procedural: sin él, los metales (aro, asas, dorada) se ven planos y negros
+  function entorno() {
+    var c = document.createElement('canvas'); c.width = 512; c.height = 256;
+    var g = c.getContext('2d');
+    var grad = g.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0, '#161110');
+    grad.addColorStop(0.46, '#241B17');
+    grad.addColorStop(0.52, '#3A2C24');
+    grad.addColorStop(1, '#0A0807');
+    g.fillStyle = grad; g.fillRect(0, 0, 512, 256);
+    var focos = [[80, 52, 46, 'rgba(190,215,255,.95)'], [250, 40, 34, 'rgba(255,240,220,.9)'],
+                 [390, 60, 40, 'rgba(170,200,255,.85)'], [470, 30, 26, 'rgba(255,210,150,.8)']];
+    focos.forEach(function (f) {
+      var rg = g.createRadialGradient(f[0], f[1], 0, f[0], f[1], f[2]);
+      rg.addColorStop(0, f[3]); rg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = rg; g.fillRect(f[0] - f[2], f[1] - f[2], f[2] * 2, f[2] * 2);
+    });
+    var t = new THREE.CanvasTexture(c);
+    t.mapping = THREE.EquirectangularReflectionMapping;
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+  escena3d.environment = entorno();
+
+  var camara = new THREE.PerspectiveCamera(42, escena.clientWidth / escena.clientHeight, 0.1, 80);
+  var mirada = new THREE.Vector3(0, 1.15, 0);
+  var yaw = 0.40, pitch = 0.50, dist = 11.9, yawObj = yaw, pitchObj = pitch;
+
+  var hemi = new THREE.HemisphereLight(0xFFF1E0, 0x1A1310, 0.95);
+  escena3d.add(hemi);
+
+  var key = new THREE.DirectionalLight(0xffffff, 3.0);
+  key.position.set(5.5, 12, 6.5);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.camera.left = -12; key.shadow.camera.right = 12;
+  key.shadow.camera.top = 12; key.shadow.camera.bottom = -12;
+  key.shadow.camera.near = 1; key.shadow.camera.far = 40;
+  key.shadow.bias = -0.0008;
+  escena3d.add(key);
+
+  var rellenoAzul = new THREE.SpotLight(0xC9A882, 80, 26, 0.85, 0.55, 1.6);
+  rellenoAzul.position.set(-9, 8.5, -7);
+  escena3d.add(rellenoAzul);
+
+  var rellenoCalido = new THREE.SpotLight(0xFFD9AE, 70, 24, 0.9, 0.6, 1.6);
+  rellenoCalido.position.set(9, 7, 8);
+  escena3d.add(rellenoCalido);
+
+  var contra = new THREE.DirectionalLight(0xE8D6C2, 0.7);
+  contra.position.set(-4, 5, -9);
+  escena3d.add(contra);
+
+  // luz de cámara: separa las maletas del fondo sin quemar la escena
+  var frontal = new THREE.DirectionalLight(0xFFF6EC, 1.0);
+  frontal.position.set(6, 6, 11);
+  escena3d.add(frontal);
+
+  /* ---------- 3. Texturas procedurales (sin assets externos) ---------- */
+  function texturaGoma() {
+    var c = document.createElement('canvas'); c.width = 128; c.height = 128;
+    var g = c.getContext('2d');
+    g.fillStyle = '#211B17'; g.fillRect(0, 0, 128, 128);
+    for (var i = 0; i < 8; i++) {
+      g.fillStyle = i % 2 ? '#332A24' : '#141110';
+      g.fillRect(0, i * 16, 128, 9);
+      g.fillStyle = 'rgba(255,255,255,.05)';
+      g.fillRect(0, i * 16, 128, 1);
+    }
+    for (var j = 0; j < 2200; j++) {
+      var v = 20 + Math.floor(Math.random() * 26);
+      g.fillStyle = 'rgba(' + v + ',' + v + ',' + (v + 6) + ',0.5)';
+      g.fillRect(Math.random() * 128, Math.random() * 128, 1, 1);
+    }
+    var t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(26, 1);
+    t.anisotropy = 4;
+    return t;
+  }
+
+  function texturaSuelo() {
+    var c = document.createElement('canvas'); c.width = 1024; c.height = 1024;
+    var g = c.getContext('2d');
+    var grad = g.createRadialGradient(512, 480, 60, 512, 512, 620);
+    grad.addColorStop(0, '#2A221D');
+    grad.addColorStop(0.45, '#1A1512');
+    grad.addColorStop(1, '#0A0807');
+    g.fillStyle = grad; g.fillRect(0, 0, 1024, 1024);
+    g.strokeStyle = 'rgba(200,170,140,.10)'; g.lineWidth = 2;
+    for (var i = 0; i <= 1024; i += 128) {
+      g.beginPath(); g.moveTo(i, 0); g.lineTo(i, 1024); g.stroke();
+      g.beginPath(); g.moveTo(0, i); g.lineTo(1024, i); g.stroke();
+    }
+    for (var k = 0; k < 900; k++) {
+      g.fillStyle = 'rgba(160,190,230,' + (Math.random() * 0.05) + ')';
+      g.fillRect(Math.random() * 1024, Math.random() * 1024, 2, 2);
+    }
+    return new THREE.CanvasTexture(c);
+  }
+
+  function texturaHalo() {
+    var c = document.createElement('canvas'); c.width = 256; c.height = 256;
+    var g = c.getContext('2d');
+    var grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+    grad.addColorStop(0, 'rgba(255,225,150,1)');
+    grad.addColorStop(0.25, 'rgba(255,200,90,.55)');
+    grad.addColorStop(0.6, 'rgba(255,170,40,.16)');
+    grad.addColorStop(1, 'rgba(255,160,20,0)');
+    g.fillStyle = grad; g.fillRect(0, 0, 256, 256);
+    return new THREE.CanvasTexture(c);
+  }
+
+  /* ---------- 4. Suelo y nave ---------- */
+  var suelo = new THREE.Mesh(
+    new THREE.PlaneGeometry(70, 70),
+    new THREE.MeshStandardMaterial({ map: texturaSuelo(), roughness: 0.42, metalness: 0.42, color: 0xffffff })
+  );
+  suelo.rotation.x = -Math.PI / 2;
+  suelo.position.y = -0.02;
+  suelo.receiveShadow = true;
+  escena3d.add(suelo);
+
+  // pilares de la nave
+  var matMetal = new THREE.MeshStandardMaterial({ color: 0x3B312A, roughness: 0.38, metalness: 0.8 });
+  // pilares solo al fondo: en primer plano tapaban la cinta
+  var posPilares = [-12.4, -8.6, -5.6, 5.6, 8.6, 12.4];
+  for (var pi = 0; pi < posPilares.length; pi++) {
+    var pilar = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 7.6, 12), matMetal);
+    pilar.position.set(posPilares[pi], 3.8, -7.9 - (pi % 2) * 0.8);
+    pilar.castShadow = true;
+    escena3d.add(pilar);
+  }
+  // pared del fondo
+  var pared = new THREE.Mesh(new THREE.PlaneGeometry(46, 16),
+    new THREE.MeshStandardMaterial({ color: 0x14100D, roughness: 0.95, metalness: 0.05 }));
+  pared.position.set(0, 7, -9.2);
+  escena3d.add(pared);
+
+  // rótulo de la sala
+  function rotulo(texto, sub) {
+    var c = document.createElement('canvas'); c.width = 1024; c.height = 256;
+    var g = c.getContext('2d');
+    g.fillStyle = '#14100D'; g.fillRect(0, 0, 1024, 256);
+    g.strokeStyle = '#675144'; g.lineWidth = 8; g.strokeRect(6, 6, 1012, 244);
+    g.fillStyle = '#FDFCF6'; g.font = '500 70px Inter, Arial, sans-serif';
+    g.textAlign = 'center'; g.fillText(texto, 512, 122);
+    g.fillStyle = '#C8B49F'; g.font = '34px Inter, Arial, sans-serif';
+    g.fillText(sub, 512, 190);
+    var t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+  var cartel = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 1.6),
+    new THREE.MeshBasicMaterial({ map: rotulo('RECOGIDA DE EQUIPAJE', 'BAGGAGE CLAIM · 1987') }));
+  cartel.position.set(0, 3.15, -9.05);
+  escena3d.add(cartel);
+
+  var panelLuz = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.1),
+    new THREE.MeshBasicMaterial({ color: 0x6B5343, transparent: true, opacity: 0.5 }));
+  panelLuz.position.set(-6.4, 2.2, -9.05);
+  escena3d.add(panelLuz);
+
+  /* ---------- 5. La cinta (curva cerrada tipo estadio) ---------- */
+  var ANCHO_CINTA = 1.16;
+
+  function curvaCinta() {
+    var w = 5.4, d = 3.1, r = 1.9, pts = [], i;
+    var seg = 10;
+    function tramo(x0, z0, x1, z1) {
+      for (i = 0; i <= seg; i++) pts.push(new THREE.Vector3(x0 + (x1 - x0) * i / seg, 0.74, z0 + (z1 - z0) * i / seg));
+    }
+    function arco(cx, cz, a0, a1) {
+      for (i = 0; i <= seg * 2; i++) {
+        var a = a0 + (a1 - a0) * i / (seg * 2);
+        pts.push(new THREE.Vector3(cx + Math.cos(a) * r, 0.74, cz + Math.sin(a) * r));
+      }
+    }
+    tramo(-w + r, -d, w - r, -d);
+    arco(w - r, -d + r, -Math.PI / 2, 0);
+    tramo(w, -d + r, w, d - r);
+    arco(w - r, d - r, 0, Math.PI / 2);
+    tramo(w - r, d, -w + r, d);
+    arco(-w + r, d - r, Math.PI / 2, Math.PI);
+    tramo(-w, d - r, -w, -d + r);
+    arco(-w + r, -d + r, Math.PI, Math.PI * 1.5);
+    return new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.02);
+  }
+  var curva = curvaCinta();
+
+  // Franja horizontal que sigue la curva (la superficie de goma)
+  function franjaHorizontal(altura, ancho) {
+    var n = 480, pos = [], uv = [], idx = [], up = new THREE.Vector3(0, 1, 0);
+    for (var i = 0; i <= n; i++) {
+      var t = (i % n) / n;
+      var pp = curva.getPointAt(t);
+      var tan = curva.getTangentAt(t);
+      var lado = new THREE.Vector3().crossVectors(tan, up).normalize().multiplyScalar(ancho / 2);
+      var a = pp.clone().add(lado); a.y = altura;
+      var b = pp.clone().sub(lado); b.y = altura;
+      pos.push(a.x, a.y, a.z, b.x, b.y, b.z);
+      uv.push(i / n, 1, i / n, 0);
+      if (i < n) { var k = i * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    return g;
+  }
+
+  // Paredes verticales a ambos lados de la cinta (el faldon mecanico)
+  function faldon(alto, bajo, ancho) {
+    var n = 400, pos = [], idx = [], up = new THREE.Vector3(0, 1, 0), idxBase = 0;
+    for (var s = -1; s <= 1; s += 2) {
+      var inicio = pos.length / 3;
+      for (var i = 0; i <= n; i++) {
+        var t = (i % n) / n;
+        var pp = curva.getPointAt(t);
+        var tan = curva.getTangentAt(t);
+        var lado = new THREE.Vector3().crossVectors(tan, up).normalize().multiplyScalar((ancho / 2) * s);
+        pos.push(pp.x + lado.x, alto, pp.z + lado.z);
+        pos.push(pp.x + lado.x, bajo, pp.z + lado.z);
+      }
+      for (var j = 0; j < n; j++) {
+        var k = inicio + j * 2;
+        if (s > 0) idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2);
+        else idx.push(k + 2, k + 1, k, k + 2, k + 3, k + 1);
+      }
+      idxBase += n;
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    return g;
+  }
+
+  // superficie de goma
+  var goma = new THREE.Mesh(franjaHorizontal(0.76, ANCHO_CINTA),
+    new THREE.MeshStandardMaterial({ map: texturaGoma(), color: 0xE8DED2, roughness: 0.78, metalness: 0.16 }));
+  goma.receiveShadow = true;
+  escena3d.add(goma);
+
+  // faldón metálico bajo la cinta
+  var falda = new THREE.Mesh(faldon(0.75, 0.36, ANCHO_CINTA + 0.14),
+    new THREE.MeshStandardMaterial({ color: 0x2A231E, roughness: 0.3, metalness: 0.92, side: THREE.DoubleSide }));
+  falda.receiveShadow = true;
+  escena3d.add(falda);
+
+  // bordes de acero inoxidable
+  function borde(signo) {
+    var pts = [], n = 240, up = new THREE.Vector3(0, 1, 0);
+    for (var i = 0; i <= n; i++) {
+      var t = (i % n) / n;
+      var p = curva.getPointAt(t);
+      var tan = curva.getTangentAt(t);
+      var lado = new THREE.Vector3().crossVectors(tan, up).normalize().multiplyScalar((ANCHO_CINTA / 2 + 0.03) * signo);
+      pts.push(p.clone().add(lado).add(new THREE.Vector3(0, 0.02, 0)));
+    }
+    var c = new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.02);
+    return new THREE.Mesh(
+      new THREE.TubeGeometry(c, 300, 0.038, 7, true),
+      new THREE.MeshStandardMaterial({ color: 0xD9CEC2, roughness: 0.15, metalness: 1 })
+    );
+  }
+  var bordeA = borde(1), bordeB = borde(-1);
+  bordeA.castShadow = bordeB.castShadow = true;
+  escena3d.add(bordeA); escena3d.add(bordeB);
+
+  // patas de la cinta
+  for (var pt = 0; pt < 10; pt++) {
+    var tp = pt / 10;
+    var pp = curva.getPointAt(tp);
+    var pata = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.74, 8), matMetal);
+    pata.position.set(pp.x, 0.37, pp.z);
+    pata.castShadow = true;
+    escena3d.add(pata);
+  }
+
+  /* ---------- 6. Maletas ---------- */
+  var grupoMaletas = new THREE.Group();
+  escena3d.add(grupoMaletas);
+
+  var matCache = {};
+  function material(color, tipo) {
+    var clave = color + ':' + tipo;
+    if (!matCache[clave]) {
+      matCache[clave] = new THREE.MeshStandardMaterial({
+        color: color,
+        roughness: tipo === 'soft' ? 0.86 : (tipo === 'mochila' ? 0.74 : 0.36),
+        metalness: tipo === 'soft' ? 0.05 : (tipo === 'mochila' ? 0.1 : 0.28)
+      });
+    }
+    return matCache[clave];
+  }
+
+  function formaRedonda(w, h, r) {
+    var s = new THREE.Shape();
+    s.moveTo(-w / 2 + r, -h / 2);
+    s.lineTo(w / 2 - r, -h / 2);
+    s.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
+    s.lineTo(w / 2, h / 2 - r);
+    s.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2);
+    s.lineTo(-w / 2 + r, h / 2);
+    s.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r);
+    s.lineTo(-w / 2, -h / 2 + r);
+    s.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
+    return s;
+  }
+
+  function cajaRedonda(w, h, d, color, tipo) {
+    var geo = new THREE.ExtrudeGeometry(formaRedonda(w, h, Math.min(w, h) * 0.13), {
+      depth: d, bevelEnabled: true, bevelSize: 0.022, bevelThickness: 0.022, bevelSegments: 3, curveSegments: 10, steps: 1
+    });
+    geo.translate(0, 0, -d / 2);
+    var m = new THREE.Mesh(geo, material(color, tipo));
+    m.castShadow = true; m.receiveShadow = true;
+    return m;
+  }
+
+  function construirMaleta(p) {
+    var g = new THREE.Group();
+    var cuerpo, w, h, d;
+
+    if (p.tipo === 'mochila') {
+      w = 0.38; h = 0.50; d = 0.22;
+      cuerpo = cajaRedonda(w, h, d, p.color, 'mochila');
+      cuerpo.position.y = h / 2 + 0.02;
+      g.add(cuerpo);
+      // asas de mochila
+      for (var mb = 0; mb < 2; mb++) {
+        var asa = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.014, 8, 18, Math.PI),
+          new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.8, metalness: 0.1 }));
+        asa.position.set(mb ? 0.09 : -0.09, h * 0.92, -d / 2 - 0.02);
+        asa.rotation.x = Math.PI / 2;
+        g.add(asa);
+      }
+    } else {
+      w = 0.50; h = 0.72; d = 0.27;
+      cuerpo = cajaRedonda(w, h, d, p.color, p.tipo);
+      cuerpo.position.y = h / 2 + 0.075;
+      g.add(cuerpo);
+
+      // cremallera perimetral: la costura que hace que la maleta se lea como producto
+      var ptsCrem = formaRedonda(w * 0.9, h * 0.92, Math.min(w, h) * 0.12).getPoints(72);
+      var geoCrem = new THREE.BufferGeometry().setFromPoints(ptsCrem);
+      var crem = new THREE.LineLoop(geoCrem,
+        new THREE.LineBasicMaterial({ color: 0x0b0b0d, transparent: true, opacity: 0.85 }));
+      crem.position.set(0, h * 0.5 + 0.075, d / 2 + 0.016);
+      g.add(crem);
+
+      // placa frontal (la firma)
+      var placa = new THREE.Mesh(new THREE.BoxGeometry(0.21, 0.048, 0.014),
+        new THREE.MeshStandardMaterial({ color: p.acento, roughness: 0.32, metalness: 0.75, emissive: p.acento, emissiveIntensity: 0.18 }));
+      placa.position.set(0, h * 0.62, d / 2 + 0.014);
+      g.add(placa);
+
+      // costillas (soft-shell)
+      if (p.tipo === 'soft') {
+        for (var c = 0; c < 4; c++) {
+          var cos = new THREE.Mesh(new THREE.BoxGeometry(w * 0.82, 0.012, 0.012),
+            new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.9, metalness: 0, transparent: true, opacity: 0.28 }));
+          cos.position.set(0, h * (0.22 + c * 0.15), d / 2 + 0.013);
+          g.add(cos);
+        }
+      }
+
+      // asa telescópica
+      var matAsa = new THREE.MeshStandardMaterial({ color: 0x9aa7b8, roughness: 0.28, metalness: 1 });
+      var tuboA = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.30, 8), matAsa);
+      var tuboB = tuboA.clone();
+      tuboA.position.set(-w * 0.22, h + 0.21, -d / 2 + 0.045);
+      tuboB.position.set(w * 0.22, h + 0.21, -d / 2 + 0.045);
+      g.add(tuboA); g.add(tuboB);
+      var barra = new THREE.Mesh(new THREE.BoxGeometry(w * 0.52, 0.032, 0.034), matAsa);
+      barra.position.set(0, h + 0.36, -d / 2 + 0.045);
+      g.add(barra);
+      tuboA.userData.esMango = true; tuboB.userData.esMango = true; barra.userData.esMango = true;
+
+      // ruedas
+      var matRueda = new THREE.MeshStandardMaterial({ color: 0x0b0d12, roughness: 0.6, metalness: 0.2 });
+      var pos = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+      for (var ri = 0; ri < 4; ri++) {
+        var rueda = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.052, 0.042, 14), matRueda);
+        rueda.rotation.z = Math.PI / 2;
+        rueda.position.set(pos[ri][0] * w * 0.33, 0.052, pos[ri][1] * d * 0.34);
+        rueda.castShadow = true;
+        g.add(rueda);
+      }
+      if (p.tipo === 'roller') {
+        // rollaboard: ruedas traseras más grandes
+        g.children.forEach(function (ch) {
+          if (ch.geometry && ch.geometry.type === 'CylinderGeometry' && ch.position.y < 0.1 && ch.position.z < 0) {
+            ch.scale.set(1.25, 1.25, 1.25);
+          }
+        });
+      }
+    }
+
+    g.userData.producto = p;
+    g.userData.cogida = false;
+    g.userData.fase = Math.random() * Math.PI * 2;
+    g.userData.escala = 1;
+    return g;
+  }
+
+  /* ---------- 7. Colocar maletas en la cinta ---------- */
+  var maletas = [];
+  var N = PRODUCTOS.length;
+  PRODUCTOS.forEach(function (p, i) {
+    var m = construirMaleta(p);
+    m.userData.t = i / N;
+    m.userData.baseT = i / N;
+    m.userData.escBase = 0.9 + ((i * 37) % 10) / 10 * 0.22;   // 0,90 – 1,12
+    m.userData.giro = (((i * 53) % 11) - 5) * 0.035;          // desalineadas, como en la vida
+    if (i % 3 === 0) {
+      m.traverse(function (o) { if (o.userData.esMango) o.visible = false; });
+    }
+    grupoMaletas.add(m);
+    maletas.push(m);
+  });
+
+  var velocidad = reducido ? 0.006 : 0.014; // vueltas por segundo
+
+  var UP = new THREE.Vector3(0, 1, 0), TAN = new THREE.Vector3(), LADO = new THREE.Vector3();
+  function situar(m) {
+    var t = (m.userData.t % 1 + 1) % 1;
+    var p = curva.getPointAt(t);
+    TAN.copy(curva.getTangentAt(t));
+    LADO.crossVectors(TAN, UP).normalize();
+    var esc = m.userData.escala;
+    m.position.set(p.x, 0.78 + Math.sin(performance.now() * 0.0011 + m.userData.fase) * 0.012, p.z);
+    // la cara ancha mira hacia el borde exterior: se ve desde fuera de la cinta
+    m.lookAt(m.position.x + LADO.x, m.position.y, m.position.z + LADO.z);
+    m.rotateY(m.userData.giro || 0);
+    m.scale.setScalar(esc * (m.userData.escBase || 1));
+  }
+
+  /* ---------- 8. Picking ---------- */
+  var raycaster = new THREE.Raycaster();
+  var puntero = new THREE.Vector2(-10, -10);
+  var raton = { x: 0, y: 0, activo: false };
+  var sobre = null;
+  var cogiendo = null;
+  var autoFicha = true;   // la ficha del arranque no la tumba el raycaster
+
+  function maletaDe(obj) {
+    while (obj && !obj.userData.producto) obj = obj.parent;
+    return obj || null;
+  }
+
+  function resaltar(m, on) {
+    if (!m) return;
+    m.userData.escala = on ? 1.075 : 1;
+    m.traverse(function (o) {
+      if (o.isMesh && o.material && o.material.emissive) {
+        if (!o.userData.emBase) o.userData.emBase = o.material.emissiveIntensity;
+        o.material.emissiveIntensity = on ? 0.28 : o.userData.emBase;
+      }
+    });
+  }
+
+  function abrirFicha(p) {
+    $('f-linea').textContent = p.linea.toUpperCase();
+    $('f-nombre').textContent = p.nombre;
+    $('f-precio').textContent = p.precio;
+    $('f-medidas').textContent = p.medidas;
+    $('f-medidas-et').textContent = p.medidasReales === false ? 'Formato' : 'Medidas';
+    $('f-material').textContent = p.material;
+    $('f-uso').textContent = p.uso;
+    $('f-porque').innerHTML = p.porque;
+    $('f-estado').textContent = p.id === 'dorada' ? 'Maleta dorada' : 'En la cinta';
+    ficha.setAttribute('aria-hidden', 'false');
+    ficha.classList.add('visible');
+  }
+  function cerrarFicha() {
+    ficha.classList.remove('visible');
+    ficha.setAttribute('aria-hidden', 'true');
+  }
+
+  /* ---------- 9. HUD: usuarios y dorada ---------- */
+  var usuarios = 970000;
+  var cogidas = 0;
+  var siguienteHito = 1000000;
+  var doradaActiva = null;
+
+  function pintarHUD() {
+    $('usuarios').textContent = fmt.format(Math.floor(usuarios));
+    $('cogidas').textContent = fmt.format(cogidas);
+    $('proxima').textContent = fmt.format(Math.max(0, siguienteHito - Math.floor(usuarios)));
+  }
+
+  function crearDorada() {
+    var base = construirMaleta({
+      id: 'dorada', linea: 'Edición dorada', nombre: 'Maleta dorada · viaje gratis',
+      precio: '1 viaje', medidas: '55 × 40 × 20 cm', material: 'Oro macizo (concepto)',
+      uso: '1 de cada millón', tipo: 'hard', color: 0xffcf5a, acento: 0xfff3c4,
+      porque: 'Uno de cada millón de viajeros se la encuentra en la cinta. <em>Si la coges, el viaje es tuyo</em>.'
+    });
+    var oro = new THREE.MeshPhysicalMaterial({
+      color: 0xffc93c, metalness: 1, roughness: 0.13, clearcoat: 1, clearcoatRoughness: 0.08,
+      emissive: 0x6a4a00, emissiveIntensity: 0.5
+    });
+    base.traverse(function (o) { if (o.isMesh) o.material = oro; });
+
+    // luz cálida propia: el oro ilumina la cinta a su paso
+    var luzOro = new THREE.PointLight(0xffb347, 14, 3.6, 2);
+    luzOro.position.set(0, 0.95, 0);
+    base.add(luzOro);
+
+    // halo + chispas
+    var halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: texturaHalo(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.95 }));
+    halo.scale.set(2.4, 2.4, 1);
+    halo.position.y = 0.55;
+    base.add(halo);
+    base.userData.halo = halo;
+
+    var nChispas = 220, posiciones = new Float32Array(nChispas * 3);
+    for (var s = 0; s < nChispas; s++) {
+      var r = 0.42 + Math.random() * 0.62, a = Math.random() * Math.PI * 2, z = Math.random();
+      posiciones[s * 3] = Math.cos(a) * r;
+      posiciones[s * 3 + 1] = 0.25 + z * 0.95;
+      posiciones[s * 3 + 2] = Math.sin(a) * r * 0.55;
+    }
+    var gChispas = new THREE.BufferGeometry();
+    gChispas.setAttribute('position', new THREE.BufferAttribute(posiciones, 3));
+    var chispas = new THREE.Points(gChispas, new THREE.PointsMaterial({
+      map: texturaHalo(), color: 0xffdd88, size: 0.075, transparent: true,
+      blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.9, sizeAttenuation: true
+    }));
+    base.add(chispas);
+    base.userData.chispas = chispas;
+    base.userData.t = 0.02;
+    base.userData.esDorada = true;
+    grupoMaletas.add(base);
+    doradaActiva = base;
+    $('dorada').classList.add('visible');
+    setTimeout(function () { $('dorada').classList.remove('visible'); }, 9000);
+  }
+
+  /* ---------- 10. Aviso (toast) ---------- */
+  var avisoTimer = null;
+  function avisar(html) {
+    $('aviso-texto').innerHTML = html;
+    $('aviso').classList.add('visible');
+    clearTimeout(avisoTimer);
+    avisoTimer = setTimeout(function () { $('aviso').classList.remove('visible'); }, 3400);
+  }
+
+  /* ---------- 11. Coger una maleta ---------- */
+  function coger(m) {
+    if (!m || m.userData.cogida) return;
+    m.userData.cogida = true;
+    var p = m.userData.producto;
+    cogidas += 1;
+    pintarHUD();
+    var destino = camara.position.clone().add(camara.getWorldDirection(new THREE.Vector3()).multiplyScalar(2.2));
+    destino.y -= 1.1;
+    m.userData.vuelo = { desde: m.position.clone(), hacia: destino, t: 0, escala: m.userData.escala };
+    cogiendo = m;
+    cerrando = true;
+    if (p.id === 'dorada') {
+      avisar('<b>Maleta dorada elegida.</b> El viaje es tuyo: te escribiremos para reservarlo.');
+      m.userData.halo.material.opacity = 0;
+    } else {
+      avisar('<b>' + p.nombre.replace(/</g, '&lt;') + '</b> añadida a tu selección · ' + p.precio);
+    }
+    cerrarFicha();
+    setTimeout(function () {
+      if (m.userData.vuelo) { m.visible = false; m.userData.vuelo = null; }
+    }, 550);
+  }
+  var cerrando = false;
+
+  /* ---------- 12. Eventos ---------- */
+  var arrastrando = false, ultimo = { x: 0, y: 0 };
+
+  function aNDC(ev) {
+    var r = lienzo.getBoundingClientRect();
+    puntero.x = ((ev.clientX - r.left) / r.width) * 2 - 1;
+    puntero.y = -((ev.clientY - r.top) / r.height) * 2 + 1;
+    raton.x = puntero.x; raton.y = puntero.y;
+  }
+
+  lienzo.addEventListener('pointermove', function (ev) {
+    autoFicha = false;
+    aNDC(ev);
+    raton.activo = true;
+    if (arrastrando) {
+      movido += Math.abs(ev.clientX - ultimo.x) + Math.abs(ev.clientY - ultimo.y);
+      yawObj -= (ev.clientX - ultimo.x) * 0.005;
+      pitchObj = Math.min(0.92, Math.max(0.14, pitchObj + (ev.clientY - ultimo.y) * 0.003));
+      ultimo.x = ev.clientX; ultimo.y = ev.clientY;
+    }
+  }, { passive: true });
+
+  lienzo.addEventListener('pointerleave', function () {
+    raton.activo = false;
+    if (!autoFicha) { resaltar(sobre, false); sobre = null; cerrarFicha(); }
+  });
+
+  var movido = 0;
+  lienzo.addEventListener('pointerdown', function (ev) {
+    arrastrando = true;
+    movido = 0;
+    ultimo.x = ev.clientX; ultimo.y = ev.clientY;
+    lienzo.classList.add('arrastrando');
+    aNDC(ev);
+    raton.activo = true;
+  });
+
+  window.addEventListener('pointerup', function () {
+    arrastrando = false;
+    lienzo.classList.remove('arrastrando');
+  });
+
+  lienzo.addEventListener('click', function (ev) {
+    if (movido > 8) return; // ha sido un arrastre, no un clic
+    aNDC(ev);
+    if (sobre) coger(sobre);
+  });
+
+  // teclado: flechas giran, espacio coge la resaltada
+  window.addEventListener('keydown', function (ev) {
+    if (ev.key === 'ArrowLeft') yawObj += 0.12;
+    if (ev.key === 'ArrowRight') yawObj -= 0.12;
+    if (ev.key === 'ArrowUp') pitchObj = Math.min(0.92, pitchObj + 0.05);
+    if (ev.key === 'ArrowDown') pitchObj = Math.max(0.14, pitchObj - 0.05);
+    if (ev.key === ' ' && sobre) { ev.preventDefault(); coger(sobre); }
+  });
+
+  $('f-coger').addEventListener('click', function () { if (sobre) coger(sobre); });
+
+  $('f-cerrar').addEventListener('click', function () {
+    autoFicha = false;
+    cerrarFicha();
+    if (sobre) resaltar(sobre, false);
+    sobre = null;
+    lienzo.classList.remove('sobre-maleta');
+  });
+
+  function redimensionar() {
+    var w = escena.clientWidth, h = escena.clientHeight;
+    camara.aspect = w / h;
+    camara.updateProjectionMatrix();
+    renderer.setSize(w, h, false);
+    if (w < 760) {
+      // vertical: más campo, menos giro y la cinta un poco más arriba en cuadro
+      dist = 17.4; yawObj = 0.16; pitchObj = 0.60;
+    } else {
+      dist = 11.9;
+    }
+  }
+  window.addEventListener('resize', redimensionar);
+  redimensionar();
+
+  /* ---------- 13. Bucle ---------- */
+  var reloj = new THREE.Clock();
+  var acumUsuarios = 0;
+  var tmpV = new THREE.Vector3();
+
+  function bucle() {
+    var dt = Math.min(reloj.getDelta(), 0.05);
+
+    // avance de la cinta (se detiene casi del todo cuando apuntas a una maleta)
+    var avance = sobre ? velocidad * 0.06 : velocidad;
+    for (var i = 0; i < maletas.length; i++) {
+      var m = maletas[i];
+      if (!m.visible) continue;
+      m.userData.t = (m.userData.t + avance * dt) % 1;
+      situar(m);
+    }
+    if (doradaActiva) {
+      doradaActiva.userData.t = (doradaActiva.userData.t + avance * 0.9 * dt) % 1;
+      situar(doradaActiva);
+      doradaActiva.rotation.z = Math.sin(performance.now() * 0.0016) * 0.05;
+      if (doradaActiva.userData.halo) {
+        var s = 2.2 + Math.sin(performance.now() * 0.003) * 0.22;
+        doradaActiva.userData.halo.scale.set(s, s, 1);
+      }
+      if (doradaActiva.userData.chispas) {
+        doradaActiva.userData.chispas.rotation.y += dt * 0.9;
+        doradaActiva.userData.chispas.position.y = Math.sin(performance.now() * 0.0018) * 0.05;
+      }
+    }
+
+    // vuelo de la maleta cogida
+    for (var k = 0; k < maletas.length; k++) {
+      var v = maletas[k].userData.vuelo;
+      if (!v) continue;
+      v.t = Math.min(1, v.t + dt * 2.6);
+      var e = 1 - Math.pow(1 - v.t, 3);
+      maletas[k].position.lerpVectors(v.desde, v.hacia, e);
+      maletas[k].scale.setScalar(v.escala * (1 - e * 0.85));
+      maletas[k].rotation.y += dt * 6;
+    }
+    if (doradaActiva && doradaActiva.userData.vuelo) {
+      var vv = doradaActiva.userData.vuelo;
+      vv.t = Math.min(1, vv.t + dt * 2.6);
+      var ee = 1 - Math.pow(1 - vv.t, 3);
+      doradaActiva.position.lerpVectors(vv.desde, vv.hacia, ee);
+      doradaActiva.scale.setScalar(vv.escala * (1 - ee * 0.85));
+    }
+
+    // cámara con suavizado
+    yaw += (yawObj - yaw) * Math.min(1, dt * 6);
+    pitch += (pitchObj - pitch) * Math.min(1, dt * 6);
+    // sin parallax por ratón: movía la escena bajo el cursor y hacía fallar el apuntado
+    var parallax = 0;
+    var y = yaw + parallax;
+    camara.position.set(
+      mirada.x + Math.sin(y) * Math.cos(pitch) * dist,
+      mirada.y + Math.sin(pitch) * dist,
+      mirada.z + Math.cos(y) * Math.cos(pitch) * dist
+    );
+    camara.lookAt(mirada);
+
+    // picking (mientras no haya interaccion, se respeta la ficha de arranque)
+    if (!autoFicha) {
+    raycaster.setFromCamera(puntero, camara);
+    var impactos = raycaster.intersectObjects(grupoMaletas.children, true);
+    var nueva = null;
+    for (var q = 0; q < impactos.length; q++) {
+      var cand = maletaDe(impactos[q].object);
+      if (cand && cand.visible && !cand.userData.cogida) { nueva = cand; break; }
+    }
+    if (nueva !== sobre) {
+      resaltar(sobre, false);
+      sobre = nueva;
+      resaltar(sobre, true);
+      lienzo.classList.toggle('sobre-maleta', !!sobre);
+      if (sobre) abrirFicha(sobre.userData.producto);
+    }
+    }
+
+    // etiqueta flotante sobre la maleta apuntada (une la ficha con el objeto)
+    var etq = $('etiqueta');
+    if (sobre) {
+      sobre.getWorldPosition(tmpV);
+      tmpV.y += 0.62;
+      tmpV.project(camara);
+      var rl = lienzo.getBoundingClientRect();
+      etq.style.left = ((tmpV.x * 0.5 + 0.5) * rl.width).toFixed(1) + 'px';
+      etq.style.top = ((-tmpV.y * 0.5 + 0.5) * rl.height).toFixed(1) + 'px';
+      if (etq.__id !== sobre.userData.producto.id) {
+        etq.__id = sobre.userData.producto.id;
+        etq.querySelector('.n').textContent = sobre.userData.producto.nombre;
+        etq.querySelector('.p').textContent = sobre.userData.producto.precio;
+      }
+      etq.classList.add('visible');
+    } else if (etq.classList.contains('visible')) {
+      etq.classList.remove('visible');
+      etq.__id = null;
+    }
+
+    // contador de viajeros
+    usuarios += dt * (reducido ? 420 : 1500) * (0.7 + Math.random() * 0.6);
+    acumUsuarios += dt;
+    if (acumUsuarios > 0.12) { acumUsuarios = 0; pintarHUD(); }
+    if (usuarios >= siguienteHito) {
+      siguienteHito += 1000000;
+      if (!doradaActiva) crearDorada();
+      pintarHUD();
+    }
+
+    renderer.render(escena3d, camara);
+    requestAnimationFrame(bucle);
+  }
+
+  pintarHUD();
+  bucle();
+
+  // hook de verificación (no afecta al uso normal)
+  window.__cinta = { maletas: maletas, camara: camara, escena: escena3d, renderer: renderer, curva: curva,
+    estado: function () { return { sobre: sobre ? sobre.userData.producto.id : null, usuarios: usuarios,
+      cogidas: cogidas, dorada: !!doradaActiva, auto: autoFicha }; },
+    forzarDorada: function () { if (!doradaActiva) crearDorada(); },
+    cogerActual: function () { if (sobre) coger(sobre); },
+    pausar: function (v) { velocidad = (v === false ? 0.014 : 0); },
+    ndcDe: function (i) {
+      var v = new THREE.Vector3(); maletas[i].getWorldPosition(v); v.y += 0.35;
+      var n = v.clone().project(camara); var r = lienzo.getBoundingClientRect();
+      return [Math.round((n.x * 0.5 + 0.5) * r.width), Math.round((-n.y * 0.5 + 0.5) * r.height)];
+    } };
+
+  // primera maleta resaltada para que se vea de qué va
+  setTimeout(function () {
+    if (!sobre && maletas[1]) { sobre = maletas[1]; resaltar(sobre, true); abrirFicha(maletas[1].userData.producto); }
+  }, 2200);
+})();
+</script>
+</body>
+</html>
